@@ -1,55 +1,45 @@
-import { component$, useStyles$ } from '@builder.io/qwik';
-import type { DocumentHead } from '@builder.io/qwik-city';
-import { Link } from '@builder.io/qwik-city';
+import { component$, useStyles$ } from "@builder.io/qwik";
+import type { DocumentHead } from "@builder.io/qwik-city";
+import { Link } from "@builder.io/qwik-city";
 
-import { baseKeymap, toggleMark } from 'prosemirror-commands';
-import { schema } from 'prosemirror-schema-basic';
-import { EditorState } from 'prosemirror-state';
-import { DOMParser } from 'prosemirror-model';
-import { EditorView } from 'prosemirror-view';
-import { undo, redo, history } from 'prosemirror-history';
-import { keymap } from 'prosemirror-keymap';
-import prosemirrorStyles from 'prosemirror-view/style/prosemirror.css?inline';
-import { useClientEffect$ } from '@builder.io/qwik';
+import { useClientEffect$ } from "@builder.io/qwik";
+import { MinttyValuesConfig, MinttyHTMLUI, InferValues } from "./defineUI";
+import { ProseMirrorLineHTML, ProseMirrorLineWeb } from "./ProseMirrorLine";
+
+// function useEditor
+
+type EditorProps<Values extends MinttyValuesConfig> = {
+  block: MinttyHTMLUI<Values>;
+  save(values: Partial<InferValues<Values>>): Promise<void>;
+  initialValues: InferValues<Values>;
+};
 
 export default component$(() => {
-  useStyles$(prosemirrorStyles);
-  useStyles$(`
-#my-line-editor {
-  padding: 1rem;
-  background: whitesmoke;
-}
-  `);
-  const contentDOMValue = `
-Hello <strong>Mintter</strong>!
-  `;
+  // todo: imagine "use" is the props
+  const use = {
+    async save(values: any) {
+      console.log("save", values);
+    },
+    initialValues: {
+      text: {
+        "text/html": `Hello <strong>Mintter</strong>!`,
+      },
+    },
+  };
+
+  // export default component$<EditorProps<any>>((use) => {
+  const html = ProseMirrorLineHTML;
+  const web = ProseMirrorLineWeb;
+
+  const staticWebUI = html.html(use.initialValues);
+  useStyles$(staticWebUI.css ?? "");
+  // useStyles$(a("red") ?? "");
+
   // useClientMount$
   useClientEffect$(async () => {
-    const frag = document.createElement('div');
-    frag.innerHTML = contentDOMValue;
-    let state = EditorState.create({
-      doc: DOMParser.fromSchema(schema).parse(frag),
-      schema,
-      plugins: [
-        history(),
-        keymap({ 'Mod-z': undo, 'Mod-y': redo }),
-        keymap(baseKeymap),
-        keymap({
-          'Mod-b': toggleMark(schema.marks.strong),
-          'Mod-i': toggleMark(schema.marks.em),
-        }),
-        keymap({
-          Enter: () => {
-            console.log('Handled enter');
-            return true;
-          },
-        }),
-      ],
-    });
-    const dom = document.getElementById('my-line-editor');
-    console.log('mounting line editor', dom, schema);
-    let view = new EditorView(dom, {
-      state,
+    web.web(use.initialValues, {
+      container: document.getElementById("my-line-editor")!,
+      save: use.save,
     });
   });
 
@@ -57,11 +47,11 @@ Hello <strong>Mintter</strong>!
     <div>
       <h1>Mintter Experiment #1</h1>
       <p>
-        A ProseMirror setup + some interfaces for extensible data storage in{' '}
+        A ProseMirror setup + some interfaces for extensible data storage in{" "}
         <code>src/routes/index.tsx</code>
       </p>
 
-      <div id="my-line-editor" dangerouslySetInnerHTML={contentDOMValue}></div>
+      <div id="my-line-editor" dangerouslySetInnerHTML={staticWebUI.html}></div>
       {/* <Link class="mindblow" href="/flower/">
         Blow my mind 🤯
       </Link> */}
@@ -82,11 +72,11 @@ function id<Name extends string = any>(key: TemplateStringsArray): ID<Name> {
 type Stored = {
   /** List of UI components */
   ui: {
-    for: ('web.editable' | 'web.readable' | 'web.static' | 'email.static')[];
-    use: ID<'plugin/ui'>;
+    for: ("web.editable" | "web.readable" | "web.static" | "email.static")[];
+    use: ID<"plugin/ui">;
   }[];
   val: {
-    [key: ID<'key'>]: {
+    [key: ID<"key">]: {
       /** edit timestamp */
       fmt: {
         /**
@@ -94,26 +84,26 @@ type Stored = {
          *
          * The ID points to a JSON schema...
          */
-        [format: ID<'schema'>]: {
+        [format: ID<"schema">]: {
           json: JSON;
           /** derived from */
-          knd: 'der' | 'src';
+          knd: "der" | "src";
           // if derived
           der?: {
             /** last write of this value */
             ets: number;
             /** Q: should srcs also point to content address of original JSON? */
-            srcs: { key: ID<'key'>; fmt: ID<'schema'> }[];
-            wth: ID<'plugin/ui'> | ID<'plugin/tool'>;
+            srcs: { key: ID<"key">; fmt: ID<"schema"> }[];
+            wth: ID<"plugin/ui"> | ID<"plugin/tool">;
           };
           // if source
           src?: {
             /** last edit of this format value's timestamp */
             ets: number;
             /** last edit by agent */
-            eby: ID<'agent'>;
+            eby: ID<"agent">;
             /** edit made by ui or tool */
-            wth: ID<'plugin/ui'> | ID<'plugin/tool'>;
+            wth: ID<"plugin/ui"> | ID<"plugin/tool">;
           };
         };
       };
@@ -124,11 +114,11 @@ type Stored = {
 const ex: Stored = {
   ui: [
     {
-      for: ['web.editable'],
+      for: ["web.editable"],
       use: id`plugins.mintter.com/markdown-editor:ui`,
     },
     {
-      for: ['web.static'],
+      for: ["web.static"],
       use: id`plugins.mintter.com/markdown-html:ui`,
     },
   ],
@@ -136,19 +126,19 @@ const ex: Stored = {
     [id`content`]: {
       fmt: {
         [id`plugins.mintter.com/markdown:schema`]: {
-          knd: 'src',
+          knd: "src",
           src: {
             eby: id`auth.mintter.com/acct/cole`,
             ets: Date.now(),
             wth: id`plugins.mintter.com/markdown-editor:ui@v0.1.0`,
           },
-          json: 'Hello **Mintter**!',
+          json: "Hello **Mintter**!",
         },
         // holding onto derived data ensures that we can render this even if
         // we no longer have the original ui editor that was used to
         // construct this block.
         [id`plugins.mintter.com/html:schema`]: {
-          knd: 'der',
+          knd: "der",
           der: {
             wth: id`plugins.mintter.com/markdown:schema`,
             ets: Date.now(),
@@ -159,7 +149,7 @@ const ex: Stored = {
               },
             ],
           },
-          json: 'Hello <strong>Mintter</strong>!',
+          json: "Hello <strong>Mintter</strong>!",
         },
       },
     },
@@ -201,11 +191,11 @@ const markdownEditor = defineEditable$({
 });
 
 export const head: DocumentHead = {
-  title: 'Mintter Experiment',
+  title: "Mintter Experiment",
   meta: [
     {
-      name: 'description',
-      content: 'Site description',
+      name: "description",
+      content: "Site description",
     },
   ],
 };
