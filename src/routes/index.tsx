@@ -3,7 +3,12 @@ import type { DocumentHead } from "@builder.io/qwik-city";
 import { Link } from "@builder.io/qwik-city";
 
 import { useClientEffect$ } from "@builder.io/qwik";
-import { MinttyValuesConfig, MinttyHTMLUI, InferValues } from "./defineUI";
+import {
+  MinttyValuesConfig,
+  MinttyHTMLUI,
+  InferValues,
+  MinttyWebUI,
+} from "./defineUI";
 import { ProseMirrorLineHTML, ProseMirrorLineWeb } from "./ProseMirrorLine";
 
 // function useEditor
@@ -14,35 +19,11 @@ type EditorProps<Values extends MinttyValuesConfig> = {
   initialValues: InferValues<Values>;
 };
 
-export default component$(() => {
-  // todo: imagine "use" is the props
-  const use = {
-    async save(values: any) {
-      console.log("save", values);
-    },
-    initialValues: {
-      text: {
-        "text/html": `Hello <strong>Mintter</strong>!`,
-      },
-    },
-  };
+// hmm... I have to use lookups in order to create enough indirection for both
+// server side components and client mounted to be serializable
+export const editors = [ProseMirrorLineHTML, ProseMirrorLineWeb];
 
-  // export default component$<EditorProps<any>>((use) => {
-  const html = ProseMirrorLineHTML;
-  const web = ProseMirrorLineWeb;
-
-  const staticWebUI = html.html(use.initialValues);
-  useStyles$(staticWebUI.css ?? "");
-  // useStyles$(a("red") ?? "");
-
-  // useClientMount$
-  useClientEffect$(async () => {
-    web.web(use.initialValues, {
-      container: document.getElementById("my-line-editor")!,
-      save: use.save,
-    });
-  });
-
+export default component$<{ initialValues: any }>(({ initialValues }) => {
   return (
     <div>
       <h1>Mintter Experiment #1</h1>
@@ -51,10 +32,66 @@ export default component$(() => {
         <code>src/routes/index.tsx</code>
       </p>
 
-      <div id="my-line-editor" dangerouslySetInnerHTML={staticWebUI.html}></div>
+      {/* A series of editors next to each other */}
+      <MinttyBlock
+        html={0}
+        web={1}
+        initialValues={{
+          text: {
+            "text/html": "Hello <strong>Mintter</strong>!",
+          },
+        }}
+      />
+      <MinttyBlock
+        html={0}
+        web={1}
+        initialValues={{
+          text: {
+            "text/html": "This is block 2.",
+          },
+        }}
+      />
+      <MinttyBlock
+        html={0}
+        web={1}
+        initialValues={{
+          text: {
+            "text/html": "This is block 3.",
+          },
+        }}
+      />
       {/* <Link class="mindblow" href="/flower/">
         Blow my mind 🤯
       </Link> */}
+    </div>
+  );
+});
+
+export const MinttyBlock = component$<{
+  initialValues: any;
+  html: number;
+  web: number;
+}>(({ initialValues, html, web }) => {
+  const randId = "block-" + Math.random().toString(36).slice(2);
+  const htmlOf = editors[html] as any;
+  const staticWebUI = htmlOf.html(initialValues);
+
+  useClientEffect$(async () => {
+    const webOf = editors[web] as any;
+    const editorElt = document.getElementById(randId)!;
+    editorElt.innerHTML = "";
+    webOf.web(initialValues, {
+      container: editorElt,
+      async save(values: any) {
+        console.log("save", values);
+      },
+    });
+  });
+
+  return (
+    <div>
+      <style>{staticWebUI.css}</style>
+      <div id={randId} dangerouslySetInnerHTML={staticWebUI.html}></div>
     </div>
   );
 });
