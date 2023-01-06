@@ -5,10 +5,9 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 import prosemirrorStyles from "prosemirror-view/style/prosemirror.css?inline";
-import { defineUI } from "./defineUI";
-import { textHTML } from "./textHTML";
 
 import { schema as basicSchema } from "prosemirror-schema-basic";
+import { HTMLLine } from "./HTMLLine";
 
 /**
  * Minimal ProseMirror as a single line editor with marks from {@link import("prosemirror-schema-basic")}
@@ -29,15 +28,8 @@ const schema = new Schema({
   marks: basicSchema.spec.marks,
 });
 
-const ProseMirrorLine = defineUI({
-  values: {
-    text: {
-      format: textHTML,
-    },
-  },
-});
 
-export const ProseMirrorLineHTML = ProseMirrorLine.forHTML((values) => {
+export const ProseMirrorLineHTML = HTMLLine.forHTML((values) => {
   const css = [
     prosemirrorStyles,
     `.mintty-line-editor {
@@ -61,7 +53,7 @@ export const ProseMirrorLineHTML = ProseMirrorLine.forHTML((values) => {
   };
 });
 
-export const ProseMirrorLineWeb = ProseMirrorLine.forWeb((values, mountTo) => {
+export const ProseMirrorLineWeb = HTMLLine.forWeb((values, mountTo) => {
   const frag = document.createElement("div");
   frag.innerHTML = values.text["text/html"];
   const domParser = DOMParser.fromSchema(schema);
