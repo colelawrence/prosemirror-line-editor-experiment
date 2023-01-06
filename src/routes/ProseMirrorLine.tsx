@@ -8,6 +8,7 @@ import prosemirrorStyles from "prosemirror-view/style/prosemirror.css?inline";
 
 import { schema as basicSchema } from "prosemirror-schema-basic";
 import { HTMLLine } from "./HTMLLine";
+import xss from "xss";
 
 /**
  * Minimal ProseMirror as a single line editor with marks from {@link import("prosemirror-schema-basic")}
@@ -44,6 +45,7 @@ export const ProseMirrorLineHTML = HTMLLine.forHTML((values) => {
 
   let html = values.text["text/html"];
   if (!html) html = "<br/>";
+  else html = xss(html)
   // // Add wrapping paragraph
   // const noParagraphs = !/\s*<p\b/.test(html);
   // if (noParagraphs) html = `<p>${html}</p>`;
