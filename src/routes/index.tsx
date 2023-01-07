@@ -1,5 +1,5 @@
 import { component$ } from "@builder.io/qwik";
-import { DocumentHead, Link } from "@builder.io/qwik-city";
+import type { DocumentHead } from "@builder.io/qwik-city";
 
 import { useClientEffect$ } from "@builder.io/qwik";
 import type { MinttyValuesConfig, MinttyHTMLUI, InferValues } from "./defineUI";
@@ -69,7 +69,7 @@ export const MinttyBlock = component$<{
 }>(({ initialValues, html, web }) => {
   const randId = "block-" + Math.random().toString(36).slice(2);
   const htmlOf = editors[html] as any;
-  const staticWebUI = htmlOf.html(initialValues);
+  const staticWebUI = htmlOf.html({ values: initialValues });
 
   useClientEffect$(async () => {
     const webOf = editors[web] as any;

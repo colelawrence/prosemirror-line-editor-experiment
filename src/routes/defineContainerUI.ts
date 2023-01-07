@@ -1,5 +1,10 @@
 import type { TeardownLogic } from "rxjs";
-import type { InferValues, MinttyHTMLFn, MinttyValuesConfig } from "./defineUI";
+import type {
+  InferValues,
+  MinttyHTMLFn,
+  MinttyValuesConfig,
+  MinttyWebFn,
+} from "./defineUI";
 import type { TestBlockData } from "./TestBlockData";
 import { objMap } from "./objMap";
 
@@ -107,34 +112,41 @@ type MinterChildEvents = {
 type InferSlotsForWeb<Slots extends MinttySlotsConfig> = InferSlotItemValues<
   Slots,
   {
-    mount(mountTo: {
-      container: HTMLElement;
-      save(values: Partial<InferSlotItemValues<Slots, "hmmm">>): Promise<void>;
-    }): {
-      // hypothetically...
-      on: {
-        [P in keyof MinterChildEvents]: (
-          listener: (event: MinterChildEvents[P]) => PromiseLike<void>
-        ) => TeardownLogic;
-      };
-      selectAll(): Outcome;
-    };
+    destroy(): void;
+    apply(update: Partial<InferValues<any>>): void;
+    // mount(mountTo: {
+    //   container: HTMLElement;
+    //   save(values: Partial<InferSlotItemValues<Slots, "hmmm">>): Promise<void>;
+    // }): {
+    //   // hypothetically...
+    //   on: {
+    //     [P in keyof MinterChildEvents]: (
+    //       listener: (event: MinterChildEvents[P]) => PromiseLike<void>
+    //     ) => TeardownLogic;
+    //   };
+    //   selectAll(): Outcome;
+    // };
   }
 >;
+type MountToInput<Config extends MinttyValuesConfig & MinttySlotsConfig> = {
+  container: HTMLElement;
+  save(values: Partial<InferValues<Config>>): Promise<void>;
+  // saveStandOffProperties?
+  // events?
+};
 
+export interface MinttyWebContainerFnInput<
+  Config extends MinttyValuesConfig & MinttySlotsConfig
+> {
+  /** initial values on the container */
+  values: InferValues<Config>;
+  slots: InferSlotsForWeb<Config>;
+  mountTo: MountToInput<Config>;
+}
 export interface MinttyWebContainerFn<
   Config extends MinttyValuesConfig & MinttySlotsConfig
 > {
-  (options: {
-    /** initial values on the container */
-    values: InferValues<Config>;
-    slots: InferSlotsForWeb<Config>;
-    // // duplicates slots?
-    // mountTo: {
-    //   container: HTMLElement;
-    //   save(values: Partial<InferSlotItemValues<Slots, "hmmm">>): Promise<void>;
-    // }
-  }): {
+  (options: MinttyWebContainerFnInput<Config>): {
     destroy(): void;
     apply(values: Partial<InferValues<Config>>): void;
     applyItemStandoff(
@@ -154,6 +166,11 @@ export interface MinttyWebContainerUI<
 /** use for keys that should not be accesed from runtime */
 const justForTypeScript = Symbol.for("just for typescript") as any;
 
+export type PickUIFn = (options: { itemTestData: TestBlockData<any> }) => {
+  html: MinttyHTMLFn<any>;
+  web: MinttyWebFn<any>;
+};
+
 export function defineContainerUI<
   Config extends MinttyValuesConfig & MinttySlotsConfig
 >(config: Config) {
@@ -172,32 +189,69 @@ export function defineContainerUI<
         web,
       };
     },
-    testData(data: TestBlockData<Config>) {
-      return {
-        forHTML(options: {
-          // In the future, we will need to return an id
-          pickHTMLUI: (options: {
-            itemTestData: TestBlockData<any>;
-          }) => MinttyHTMLFn<any>;
-        }): MinttyHTMLContainerFnInput<Config> {
-          return {
-            slots:
-              data.slots &&
-              objMap(data.slots, (slotItemList) =>
-                slotItemList.map((slotItem) => ({
-                  miid: slotItem.miid,
-                  standoffValues: slotItem.standoffValues,
-                  ...options.pickHTMLUI({
-                    itemTestData: slotItem.linkedBlockData,
-                  })(slotItem.linkedBlockData.values),
-                }))
-              ),
-            values: data.values, // objMap(data.values, (value) => objMap(value, format => )),
-          };
-        },
-      };
+    testData(data: TestBlockData<Config>): TestBlockData<Config> {
+      return data;
     },
     _slotHTMLTypes: justForTypeScript as InferSlotsForHTML<Config>,
     _slotWebTypes: justForTypeScript as InferSlotsForWeb<Config>,
+  };
+}
+export function renderContainerForHTML<
+  Config extends MinttyValuesConfig & MinttySlotsConfig
+>(options: {
+  pickUI: PickUIFn;
+  data: TestBlockData<Config>;
+}): MinttyHTMLContainerFnInput<Config> {
+  return {
+    slots: objMap(options.data.slots, (slotItemList) =>
+      slotItemList.map((slotItem, idx) => ({
+        miid: slotItem.miid,
+        standoffValues: slotItem.standoffValues,
+        ...options
+          .pickUI({
+            itemTestData: slotItem.linkedBlockData,
+          })
+          .html({
+            values: slotItem.linkedBlockData.values,
+            // IDEA: Some way to attach everything together without full container + slots hydration?
+            // If this isn't plausible, we probably need to completely rewrite around Qwik.
+            // bindHTMLId: `i-${slotItem.miid}-${idx}`,
+          }),
+      }))
+    ),
+    values: options.data.values, // objMap(data.values, (value) => objMap(value, format => )),
+  };
+}
+
+export function renderContainerForWeb<
+  Config extends MinttyValuesConfig & MinttySlotsConfig
+>(options: {
+  // In the future, we will need to return an id
+  pickUI: PickUIFn;
+  data: TestBlockData<Config>;
+  mountTo: MountToInput<Config>;
+}): MinttyWebContainerFnInput<Config> {
+  return {
+    slots: objMap(options.data.slots, (slotItemList) =>
+      slotItemList.map((slotItem, idx) => ({
+        miid: slotItem.miid,
+        standoffValues: slotItem.standoffValues,
+        ...options
+          .pickUI({
+            itemTestData: slotItem.linkedBlockData,
+          })
+          .web(slotItem.linkedBlockData.values, {
+            // hmmm...
+            container: document.getElementById(
+              `i-${slotItem.miid}-${idx}`
+            ) as HTMLElement,
+            async save(values) {
+              console.log(`TODO: save ${slotItem.miid}`, values);
+            },
+          }),
+      }))
+    ),
+    values: options.data.values, // objMap(data.values, (value) => objMap(value, format => )),
+    mountTo: options.mountTo,
   };
 }

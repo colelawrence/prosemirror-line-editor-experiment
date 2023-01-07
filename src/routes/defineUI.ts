@@ -23,7 +23,7 @@ export interface MinttyHTMLUI<Values extends MinttyValuesConfig> {
 }
 
 export interface MinttyHTMLFn<Values extends MinttyValuesConfig> {
-  (values: InferValues<Values>): {
+  (options: { values: InferValues<Values> }): {
     css?: string;
     html: string;
   };

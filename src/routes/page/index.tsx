@@ -1,14 +1,20 @@
-import { component$, useStyles$ } from "@builder.io/qwik";
-import { ProseMirrorLineHTML } from "../ProseMirrorLine";
+import { component$, useClientEffect$, useStyles$ } from "@builder.io/qwik";
+import { ProseMirrorLineHTML, ProseMirrorLineWeb } from "../ProseMirrorLine";
 import {
   PageWithTitle,
   ProseMirrorBlockContainerHTML,
+  ProseMirrorBlockContainerWeb,
 } from "../ProseMirrorBlockContainer";
 import { unixSecsFrom } from "./unixSecsFrom";
 import { HTMLLine } from "../HTMLLine";
 import { dev } from "@autoplay/utils";
+import {
+  renderContainerForHTML,
+  renderContainerForWeb,
+} from "../defineContainerUI";
 
-export default component$<{ initialValues: any }>(({ initialValues }) => {
+export default component$(() => {
+  const pageHTMLID = "c-" + Math.random().toString(36).slice(2);
   const pageTestData = PageWithTitle.testData({
     values: {
       title: {
@@ -104,19 +110,57 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
     },
   });
 
-  const htmlForBlockContainer = pageTestData.forHTML({
-    pickHTMLUI({ itemTestData }) {
+  const htmlForBlockContainer = renderContainerForHTML({
+    data: pageTestData,
+    pickUI({ itemTestData }) {
       if (typeof itemTestData.values["text"]?.["text/html"] === "string") {
         console.debug("picked ProseMirrorLineHTML ui", itemTestData);
-        return ProseMirrorLineHTML.html;
+        return {
+          html: ProseMirrorLineHTML.html,
+          web: ProseMirrorLineWeb.web,
+        };
       }
-
       console.warn("unknown slot item UI", itemTestData);
-      return ProseMirrorLineHTML.html;
+      return {
+        html: ProseMirrorLineHTML.html,
+        web: ProseMirrorLineWeb.web,
+      };
     },
   });
+
   // console.log(dev`${htmlForBlockContainer}`._display);
   const pageHTML = ProseMirrorBlockContainerHTML.html(htmlForBlockContainer);
+
+  useClientEffect$(() => {
+    const elt = document.getElementById(pageHTMLID);
+    const webInput = renderContainerForWeb({
+      data: pageTestData,
+      pickUI({ itemTestData }) {
+        if (typeof itemTestData.values["text"]?.["text/html"] === "string") {
+          console.debug("picked ProseMirrorLineHTML ui", itemTestData);
+          return {
+            html: ProseMirrorLineHTML.html,
+            web: ProseMirrorLineWeb.web,
+          };
+        }
+        console.warn("unknown slot item UI", itemTestData);
+        return {
+          html: ProseMirrorLineHTML.html,
+          web: ProseMirrorLineWeb.web,
+        };
+      },
+      mountTo: {
+        container: document.getElementById(pageHTMLID) as HTMLElement,
+        async save(values) {
+          console.warn(
+            dev`TODO: save prosemirror container values: ${values}`._display
+          );
+        },
+      },
+    });
+
+    ProseMirrorBlockContainerWeb.web(webInput);
+  });
 
   useStyles$(`
 .page-container {
@@ -131,7 +175,11 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
       <p>Page container renders embedded editors with HTML</p>
       <hr />
       <style>{pageHTML.css}</style>
-      <div class="page-container" dangerouslySetInnerHTML={pageHTML.html}></div>
+      <div
+        class="page-container"
+        dangerouslySetInnerHTML={pageHTML.html}
+        id={pageHTMLID}
+      ></div>
     </div>
   );
 });

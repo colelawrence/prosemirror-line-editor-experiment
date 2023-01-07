@@ -29,7 +29,7 @@ const schema = new Schema({
   marks: basicSchema.spec.marks,
 });
 
-export const ProseMirrorLineHTML = HTMLLine.forHTML((values) => {
+export const ProseMirrorLineHTML = HTMLLine.forHTML(({ values }) => {
   const css = [
     prosemirrorStyles,
     `.mintty-line-editor {

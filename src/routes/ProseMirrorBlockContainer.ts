@@ -21,14 +21,24 @@ const blockSpec = buildTypedNodeSpec("block", {
   draggable: true,
   isolating: true,
   attrs: {
-    id: {
+    miid: {
       // IDK
       // specifying the type of this default will ensure that the typed spec will work
-      default: null as any as `${string}-${string}-${string}`,
+      default: null as any as string,
+    },
+    indent: {
+      // IDK
+      // specifying the type of this default will ensure that the typed spec will work
+      default: 0,
+    },
+    /** fractional index */
+    fract: {
+      // specifying the type of this default will ensure that the typed spec will work
+      default: 0,
     },
   },
 })
-  .toDOM((node) => ["mintty-block", { "mintter-id": node.attrs.id }, 0])
+  .toDOM((node) => ["mintty-block", { "mintter-id": node.attrs.miid }, 0])
   // // Used for identifying pasting (this is not so important as we should manually manage pasting in Mintter
   // // using unified -> https://github.com/unifiedjs/unified)
   // .addParser({
@@ -95,57 +105,53 @@ const unixSecsFormat = defineMimeType("time/unix-secs", {
 });
 
 export const PageWithTitle = defineContainerUI({
-  self: {
-    values: {
-      title: {
-        format: textHTML,
-      },
+  values: {
+    title: {
+      format: textHTML,
     },
   },
-  content: {
-    slots: {
-      // slot is named "children"
-      children: {
-        multiple: true,
-        itemStandoffValues: {
-          values: {
-            fractionalIndex: {
-              format: decimalNumberFormat,
-            },
-            indentation: {
-              format: naturalNumberFormat,
-            },
+  slots: {
+    // slot is named "children"
+    children: {
+      multiple: true,
+      itemStandoffValues: {
+        values: {
+          fractionalIndex: {
+            format: decimalNumberFormat,
+          },
+          indentation: {
+            format: naturalNumberFormat,
           },
         },
       },
-      /**
-       * slot is named "comments" and will be positioned next to
-       * the page. Because this is a slot, the actual comment ui
-       * is agnostic of this hierarchy block.
-       *
-       * In fact, you could technically mix comment formats together
-       * such as using an image block ui as a comment.
-       */
-      comments: {
-        multiple: true,
-        itemStandoffValues: {
-          values: {
-            postedAt: {
-              format: unixSecsFormat,
-            },
-            postedBy: {
-              format: agentIdentityFormat,
-            },
-            /** the subject of this comment (e.g. a block on the page) */
-            targetId: {
-              format: itemIDFormat,
-            },
-            // TODO: editedAt, editedBy, etc...
-            // /** targeting another sibling comment */
-            // replyToItemId: {
-            //   format: itemIDFormat,
-            // },
+    },
+    /**
+     * slot is named "comments" and will be positioned next to
+     * the page. Because this is a slot, the actual comment ui
+     * is agnostic of this hierarchy block.
+     *
+     * In fact, you could technically mix comment formats together
+     * such as using an image block ui as a comment.
+     */
+    comments: {
+      multiple: true,
+      itemStandoffValues: {
+        values: {
+          postedAt: {
+            format: unixSecsFormat,
           },
+          postedBy: {
+            format: agentIdentityFormat,
+          },
+          /** the subject of this comment (e.g. a block on the page) */
+          targetId: {
+            format: itemIDFormat,
+          },
+          // TODO: editedAt, editedBy, etc...
+          // /** targeting another sibling comment */
+          // replyToItemId: {
+          //   format: itemIDFormat,
+          // },
         },
       },
     },
@@ -171,7 +177,9 @@ export const ProseMirrorBlockContainerHTML = PageWithTitle.forHTML(
     .map(
       (a) =>
         `
-<div class="page-block" style="margin-left: ${a.standoffValues.indentation["number/natural"] + "rem"}" data-miid="${xss(
+<div class="page-block" style="margin-left: ${
+          a.standoffValues.indentation["number/natural"] + "rem"
+        }" data-miid="${xss(
           /* hmm not an attr escape... */
           a.miid
         )}">
@@ -246,81 +254,98 @@ function wrapCommentsHTML(props: {
   return "";
 }
 
-// export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
-//   (values, mountTo) => {
-//     const frag = document.createElement("div");
-//     frag.innerHTML = values.text["text/html"];
-//     const domParser = DOMParser.fromSchema(schema);
-//     const domSerializer = DOMSerializer.fromSchema(schema);
-//     let state = EditorState.create({
-//       doc: domParser.parse(frag),
-//       schema,
-//       plugins: [
-//         history(),
-//         keymap({ "Mod-z": undo, "Mod-y": redo }),
-//         keymap(baseKeymap),
-//         keymap({
-//           "Mod-b": toggleMark(schema.marks.strong),
-//           "Mod-i": toggleMark(schema.marks.em),
-//         }),
-//         keymap({
-//           Enter: () => {
-//             console.log("Handled enter");
-//             return true;
-//           },
-//         }),
-//         {
-//           getState(state) {},
-//           props: {},
-//           spec: {
-//             view(view) {
-//               return {
-//                 update(view, prevState) {
-//                   if (!view.state.doc.eq(prevState.doc)) {
-//                     const frag = domSerializer.serializeFragment(
-//                       view.state.doc.content
-//                     );
-//                     const html = Array.from(frag.children)
-//                       .map((elt) => elt.outerHTML)
-//                       .join("\n");
-//                     // console.log(frag, html);
-//                     mountTo.save({
-//                       text: {
-//                         "text/html": html,
-//                       },
-//                     });
-//                   }
-//                 },
-//               };
-//             },
-//           },
-//         },
-//       ],
-//     });
+export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
+  ({ slots, values, mountTo }) => {
+    const titleElt = document.createElement("div");
+    titleElt.innerHTML = values.title["text/html"];
+    titleElt.contentEditable = "true";
 
-//     const view = new EditorView(mountTo.container, {
-//       state,
-//     });
+    // const domParser = DOMParser.fromSchema(schema);
+    // const domSerializer = DOMSerializer.fromSchema(schema);
+    let state = EditorState.create({
+      doc: schema.nodeFromJSON({
+        type: "doc",
+        attrs: {},
+        content: slots.children.map((child) =>
+          blockSpec.createNodeJSON({
+            miid: child.miid,
+            fract: child.standoffValues.fractionalIndex["number/decimal"],
+            indent: child.standoffValues.indentation["number/natural"],
+          })
+        ),
+      }),
+      schema,
+      plugins: [
+        history(),
+        keymap({ "Mod-z": undo, "Mod-y": redo }),
+        keymap(baseKeymap),
+        keymap({
+          "Mod-b": toggleMark(schema.marks.strong),
+          "Mod-i": toggleMark(schema.marks.em),
+        }),
+        keymap({
+          Enter: () => {
+            console.log("Handled enter");
+            return true;
+          },
+        }),
+        {
+          getState(state) {},
+          props: {},
+          spec: {
+            view(view) {
+              return {
+                update(view, prevState) {
+                  if (!view.state.doc.eq(prevState.doc)) {
+                    console.warn("TODO: Figure out which nodes were moved");
+                    // const frag = domSerializer.serializeFragment(
+                    //   view.state.doc.content
+                    // );
+                    // const html = Array.from(frag.children)
+                    //   .map((elt) => elt.outerHTML)
+                    //   .join("\n");
+                    // // console.log(frag, html);
+                    // mountTo.save({
+                    //   text: {
+                    //     "text/html": html,
+                    //   },
+                    // });
+                  }
+                },
+              };
+            },
+          },
+        },
+      ],
+    });
 
-//     console.log("mounted line editor", mountTo.container, view);
-//     view.dom.classList.add("mintty-line-editor");
+    const view = new EditorView(mountTo.container, {
+      state,
+    });
 
-//     return {
-//       // override current value from save
-//       apply(values) {
-//         if (values.text === undefined) return;
-//         const frag = document.createElement("div");
-//         frag.innerHTML = values.text["text/html"];
-//         const parsed = domParser.parse(frag);
-//         const { nodeSize } = view.state.tr.doc;
-//         // direct full state replacement
-//         view.updateState(
-//           view.state.apply(view.state.tr.replaceWith(0, nodeSize, parsed))
-//         );
-//       },
-//       destroy() {
-//         view.destroy();
-//       },
-//     };
-//   }
-// );
+    console.log("mounted container editor", mountTo.container, view);
+    view.dom.classList.add("mintty-container-editor");
+
+    return {
+      applyItemStandoff(values) {
+        console.warn(dev`TODO: update page standoff values for ${values}`);
+      },
+      // override current value from save
+      apply(values) {
+        console.warn("TODO: update page values from other source", { values });
+        if (values.title === undefined) return;
+        const frag = document.createElement("div");
+        frag.innerHTML = values.title["text/html"];
+        // const parsed = domParser.parse(frag);
+        // const { nodeSize } = view.state.tr.doc;
+        // direct full state replacement
+        // view.updateState(
+        //   view.state.apply(view.state.tr.replaceWith(0, nodeSize, parsed))
+        // );
+      },
+      destroy() {
+        view.destroy();
+      },
+    };
+  }
+);
