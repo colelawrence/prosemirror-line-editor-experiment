@@ -16,6 +16,11 @@ import {
   renderContainerForHTML,
   createUIStateForWeb,
 } from "../routes/defineContainerUI";
+import {
+  SimpleImage,
+  SimpleImageHTML,
+  SimpleImageWeb,
+} from "~/routes/SimpleImage";
 
 export const pickUIFn: PickUIFn = ({ itemTestData }) => {
   if (typeof itemTestData.values["text"]?.["text/html"] === "string") {
@@ -34,6 +39,13 @@ export const pickUIFn: PickUIFn = ({ itemTestData }) => {
     return {
       html: ProseMirrorBlockContainerHTML.html,
       web: ProseMirrorBlockContainerWeb.web,
+    };
+  }
+  if (typeof itemTestData.values["imageSrc"]?.["data-uri"] === "string") {
+    console.debug("picked SimpleImage ui", itemTestData);
+    return {
+      html: SimpleImageHTML.html,
+      web: SimpleImageWeb.web,
     };
   }
   console.warn("unknown slot item UI", itemTestData);
@@ -63,6 +75,23 @@ export const MinttyPage = component$(() => {
           }),
           standoffValues: {
             fractionalIndex: { "number/decimal": 0.01 },
+            indentation: { "number/natural": 0 },
+          },
+        },
+        {
+          miid: "MIID-IMAGE-001",
+          linkedBlockData: SimpleImage.testData({
+            slots: {},
+            values: {
+              imageSrc: {
+                "data-uri":
+                  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'  width='40' height='40' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🥰</text></svg>",
+              },
+              title: { "text/html": "I love it!" },
+            },
+          }),
+          standoffValues: {
+            fractionalIndex: { "number/decimal": 0.2 },
             indentation: { "number/natural": 0 },
           },
         },
@@ -136,6 +165,24 @@ export const MinttyPage = component$(() => {
             postedBy: { "mintter/signer": "GITHUB.COM:colelawrence" },
           },
         },
+        {
+          miid: "MIID-COMMENT-004",
+          linkedBlockData: SimpleImage.testData({
+            slots: {},
+            values: {
+              imageSrc: {
+                "data-uri":
+                  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'  width='40' height='40' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🤯</text></svg>",
+              },
+              title: { "text/html": "Caption <em>on image</em>." },
+            },
+          }),
+          standoffValues: {
+            targetId: { "mintter/item-id": "MIID-LINE-003" },
+            postedAt: { "time/unix-secs": unixSecsFrom({ minutesAgo: 100 }) },
+            postedBy: { "mintter/signer": "GITHUB.COM:colelawrence" },
+          },
+        },
       ],
     },
   });
@@ -166,6 +213,7 @@ export const MinttyPage = component$(() => {
     console.log("page web", web);
 
     const mounted = web.mount({
+      // TODO: Remove children from HTML render (do after so we can dev debug)
       container: document.getElementById(pageHTMLID) as HTMLElement,
     });
     console.log("page mounted", mounted);

@@ -241,6 +241,7 @@ function trashHTML(input: string): HTMLElement {
 
 export const ProseMirrorBlockContainerHTML = PageWithTitle.forHTML(
   ({ slots, values }) => {
+    slots.comments.map(child => child.standoffValues.postedAt["time/unix-secs"])
     return {
       css: `
 .page-content { padding: 8px 0; }
