@@ -8,12 +8,12 @@ export default component$(() => {
     <header>
       <h1>Mintter Experiment #1</h1>
       <ul>
-        <li>
+        {/* <li>
           <a href="/">Line Editors</a>
         </li>
         <li>
           <a href="/page/">Page Demo</a>
-        </li>
+        </li> */}
       </ul>
     </header>
   );

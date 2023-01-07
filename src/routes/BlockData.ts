@@ -1,16 +1,15 @@
-import {
+import type {
   InferSlotItemValues,
-  MinttySlotsConfig
+  MinttySlotsConfig,
 } from "./defineContainerUI";
-import { MinttyValuesConfig, InferValues } from "./defineUI";
-
+import type { MinttyValuesConfig, InferValues } from "./defineUI";
 
 export type BlockData<
   Config extends MinttyValuesConfig & MinttySlotsConfig = {
     values: {};
     slots: {};
   },
-  LinkedBlock extends { linkedBlockData?: any; } = {}
+  LinkedBlock extends { linkedBlockData?: any } = {}
 > = {
   values: InferValues<Config>;
   slots: InferSlotItemValues<Config, LinkedBlock>;

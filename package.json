@@ -45,6 +45,7 @@
     "@autoplay/utils": "^0.0.25",
     "librarylog": "^0.0.4",
     "moment": "^2.29.4",
+    "prosemirror-dropcursor": "^1.6.1",
     "rxjs": "^7.8.0",
     "xss": "^1.0.14"
   }

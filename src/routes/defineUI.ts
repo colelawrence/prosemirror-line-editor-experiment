@@ -1,3 +1,4 @@
+import type { InferSlotItemValues } from "./defineContainerUI";
 import type { MimeType } from "./MimeType";
 import type { InferParserValue } from "./Parser";
 
@@ -22,29 +23,36 @@ export interface MinttyHTMLUI<Values extends MinttyValuesConfig> {
   html: MinttyHTMLFn<Values>;
 }
 
+/** @deprecated for MinttyHTMLContainerFn */
 export interface MinttyHTMLFn<Values extends MinttyValuesConfig> {
   (options: { values: InferValues<Values> }): {
     css?: string;
     html: string;
   };
 }
-
+/** @deprecated for MinttyWebContainerFn */
 export interface MinttyWebFn<Values extends MinttyValuesConfig> {
-  (
-    values: InferValues<Values>,
-    mountTo: {
-      container: HTMLElement;
-      save(values: Partial<InferValues<Values>>): Promise<void>;
-    }
-  ): {
-    destroy(): void;
+  (options: {
+    values: InferValues<Values>;
+    // slots: InferSlotsForWeb<Config>;
+    save(values: Partial<InferValues<Values>>): Promise<void>;
+  }): {
     apply(values: Partial<InferValues<Values>>): void;
+    mount: MinttyMountFn;
+  };
+}
+
+/** IDEA: It would be cool to have some kind of Promise loading state for while the editor loads... */
+export interface MinttyMountFn {
+  (mountTo: { container: HTMLElement }): {
+    destroy(): void;
   };
 }
 export interface MinttyWebUI<Values extends MinttyValuesConfig> {
   values: Values;
   web: MinttyWebFn<Values>;
 }
+
 export function defineUI<Values extends MinttyValuesConfig>(values: Values) {
   return {
     forHTML(html: MinttyHTMLFn<Values>): MinttyHTMLUI<Values> {

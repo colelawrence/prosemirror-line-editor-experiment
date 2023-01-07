@@ -1,12 +1,14 @@
-import type { TeardownLogic } from "rxjs";
 import type {
   InferValues,
   MinttyHTMLFn,
   MinttyValuesConfig,
+  MinttyMountFn,
   MinttyWebFn,
 } from "./defineUI";
 import type { TestBlockData } from "./TestBlockData";
-import { objMap } from "./objMap";
+import { objMap } from "../components/utils/objMap";
+import type { TeardownLogic } from "rxjs";
+import { createErrorObj, dev } from "@autoplay/utils";
 
 enum Outcome {
   Passthrough = 0,
@@ -111,29 +113,8 @@ type MinterChildEvents = {
 
 type InferSlotsForWeb<Slots extends MinttySlotsConfig> = InferSlotItemValues<
   Slots,
-  {
-    destroy(): void;
-    apply(update: Partial<InferValues<any>>): void;
-    // mount(mountTo: {
-    //   container: HTMLElement;
-    //   save(values: Partial<InferSlotItemValues<Slots, "hmmm">>): Promise<void>;
-    // }): {
-    //   // hypothetically...
-    //   on: {
-    //     [P in keyof MinterChildEvents]: (
-    //       listener: (event: MinterChildEvents[P]) => PromiseLike<void>
-    //     ) => TeardownLogic;
-    //   };
-    //   selectAll(): Outcome;
-    // };
-  }
+  { mount: MinttyMountFn }
 >;
-type MountToInput<Config extends MinttyValuesConfig & MinttySlotsConfig> = {
-  container: HTMLElement;
-  save(values: Partial<InferValues<Config>>): Promise<void>;
-  // saveStandOffProperties?
-  // events?
-};
 
 export interface MinttyWebContainerFnInput<
   Config extends MinttyValuesConfig & MinttySlotsConfig
@@ -141,20 +122,28 @@ export interface MinttyWebContainerFnInput<
   /** initial values on the container */
   values: InferValues<Config>;
   slots: InferSlotsForWeb<Config>;
-  mountTo: MountToInput<Config>;
+  save(values: Partial<InferValues<Config>>): Promise<void>;
 }
+
+type MinttyWebContainerFnResult<
+  Config extends MinttyValuesConfig & MinttySlotsConfig
+> = {
+  // HMMM?
+  // applyItemStandoff(
+  //   values: Partial<
+  //     InferSlotItemValues<Config, { updateItemAtIndex: number }>
+  //   >
+  // ): void;
+  apply(values: Partial<InferValues<Config>>): void;
+  mount: MinttyMountFn;
+};
+
 export interface MinttyWebContainerFn<
   Config extends MinttyValuesConfig & MinttySlotsConfig
 > {
-  (options: MinttyWebContainerFnInput<Config>): {
-    destroy(): void;
-    apply(values: Partial<InferValues<Config>>): void;
-    applyItemStandoff(
-      values: Partial<
-        InferSlotItemValues<Config, { updateItemAtIndex: number }>
-      >
-    ): void;
-  };
+  (
+    options: MinttyWebContainerFnInput<Config>
+  ): MinttyWebContainerFnResult<Config>;
 }
 export interface MinttyWebContainerUI<
   Config extends MinttyValuesConfig & MinttySlotsConfig
@@ -167,8 +156,8 @@ export interface MinttyWebContainerUI<
 const justForTypeScript = Symbol.for("just for typescript") as any;
 
 export type PickUIFn = (options: { itemTestData: TestBlockData<any> }) => {
-  html: MinttyHTMLFn<any>;
-  web: MinttyWebFn<any>;
+  html: MinttyHTMLContainerFn<any>;
+  web: MinttyWebContainerFn<any>;
 };
 
 export function defineContainerUI<
@@ -192,6 +181,7 @@ export function defineContainerUI<
     testData(data: TestBlockData<Config>): TestBlockData<Config> {
       return data;
     },
+    _valueType: justForTypeScript as InferValues<Config>,
     _slotHTMLTypes: justForTypeScript as InferSlotsForHTML<Config>,
     _slotWebTypes: justForTypeScript as InferSlotsForWeb<Config>,
   };
@@ -212,6 +202,9 @@ export function renderContainerForHTML<
             itemTestData: slotItem.linkedBlockData,
           })
           .html({
+            slots: createErrorObj(
+              dev`Access slots for html of embedded ${slotItem.linkedBlockData.slots}`
+            ),
             values: slotItem.linkedBlockData.values,
             // IDEA: Some way to attach everything together without full container + slots hydration?
             // If this isn't plausible, we probably need to completely rewrite around Qwik.
@@ -223,35 +216,48 @@ export function renderContainerForHTML<
   };
 }
 
-export function renderContainerForWeb<
+export function createUIStateForWeb<
   Config extends MinttyValuesConfig & MinttySlotsConfig
 >(options: {
   // In the future, we will need to return an id
   pickUI: PickUIFn;
   data: TestBlockData<Config>;
-  mountTo: MountToInput<Config>;
-}): MinttyWebContainerFnInput<Config> {
-  return {
+  TODO_Save: null; // MountToInput<Config>;
+}): MinttyWebContainerFnResult<Config> {
+  const input: MinttyWebContainerFnInput<Config> = {
     slots: objMap(options.data.slots, (slotItemList) =>
       slotItemList.map((slotItem, idx) => ({
         miid: slotItem.miid,
         standoffValues: slotItem.standoffValues,
-        ...options
-          .pickUI({
-            itemTestData: slotItem.linkedBlockData,
-          })
-          .web(slotItem.linkedBlockData.values, {
-            // hmmm...
-            container: document.getElementById(
-              `i-${slotItem.miid}-${idx}`
-            ) as HTMLElement,
-            async save(values) {
-              console.log(`TODO: save ${slotItem.miid}`, values);
-            },
-          }),
+        mount: createUIStateForWeb({
+          pickUI: options.pickUI,
+          data: slotItem.linkedBlockData,
+          TODO_Save: options.TODO_Save,
+        }).mount, // TODO: where does apply() go?
+        // ...createUIStateForWeb({
+        //   data: slotItem.linkedBlockData,
+        //   pickUI: options.pickUI,
+        //   TODO_Save: null
+        // })
+        // // TODO: connect the apply()
+        // mount: options
+        //   .pickUI({
+        //     itemTestData: slotItem.linkedBlockData,
+        //   })
+        //   .web({
+        //     async save(values) {
+        //       console.warn("TODO save", values);
+        //     },
+        //     values: slotItem.linkedBlockData.values,
+        //     slots: slotItem.linkedBlockData.slots,
+        //   }).mount,
       }))
     ),
     values: options.data.values, // objMap(data.values, (value) => objMap(value, format => )),
-    mountTo: options.mountTo,
+    async save(values) {
+      console.warn("TODO save values?", values);
+    },
   };
+  const { web } = options.pickUI({ itemTestData: options.data });
+  return web(input);
 }

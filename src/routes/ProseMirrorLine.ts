@@ -18,6 +18,8 @@ const schema = new Schema({
     doc: {
       content: "inline*",
       // group: "block",
+      isolating: true,
+      definingAsContext: true,
       parseDOM: [{ tag: "p" }],
     },
     // :: NodeSpec The text node.
@@ -54,9 +56,9 @@ export const ProseMirrorLineHTML = HTMLLine.forHTML(({ values }) => {
   };
 });
 
-export const ProseMirrorLineWeb = HTMLLine.forWeb((values, mountTo) => {
+export const ProseMirrorLineWeb = HTMLLine.forWeb((mountTo) => {
   const frag = document.createElement("div");
-  frag.innerHTML = values.text["text/html"];
+  frag.innerHTML = mountTo.values.text["text/html"];
   const domParser = DOMParser.fromSchema(schema);
   const domSerializer = DOMSerializer.fromSchema(schema);
   let state = EditorState.create({
@@ -107,28 +109,47 @@ export const ProseMirrorLineWeb = HTMLLine.forWeb((values, mountTo) => {
     ],
   });
 
-  const view = new EditorView(mountTo.container, {
-    state,
-  });
-
-  console.log("mounted line editor", mountTo.container, view);
-  view.dom.classList.add("mintty-line-editor");
+  let updateFn = (values: Partial<typeof HTMLLine._valueType>) => {
+    if (values.text === undefined) return;
+    const frag = document.createElement("div");
+    frag.innerHTML = values.text["text/html"];
+    const parsed = domParser.parse(frag);
+    const { nodeSize } = view.state.tr.doc;
+    // direct full state replacement
+    view.updateState(
+      view.state.apply(view.state.tr.replaceWith(0, nodeSize, parsed))
+    );
+  };
 
   return {
     // override current value from save
     apply(values) {
-      if (values.text === undefined) return;
-      const frag = document.createElement("div");
-      frag.innerHTML = values.text["text/html"];
-      const parsed = domParser.parse(frag);
-      const { nodeSize } = view.state.tr.doc;
-      // direct full state replacement
-      view.updateState(
-        view.state.apply(view.state.tr.replaceWith(0, nodeSize, parsed))
-      );
+      updateFn(values);
     },
-    destroy() {
-      view.destroy();
+    mount({ container }) {
+      const view = new EditorView(container, {
+        state,
+      });
+
+      console.log("mounted line editor", container, view);
+      view.dom.classList.add("mintty-line-editor");
+      updateFn = (values: typeof HTMLLine._valueType) => {
+        if (values.text === undefined) return;
+        const frag = document.createElement("div");
+        frag.innerHTML = values.text["text/html"];
+        const parsed = domParser.parse(frag);
+        const { nodeSize } = view.state.tr.doc;
+        // direct full state replacement
+        view.updateState(
+          view.state.apply(view.state.tr.replaceWith(0, nodeSize, parsed))
+        );
+      };
+
+      return {
+        destroy() {
+          view.destroy();
+        },
+      };
     },
   };
 });

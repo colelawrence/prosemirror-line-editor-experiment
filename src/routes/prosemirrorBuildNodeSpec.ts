@@ -14,9 +14,9 @@ import { BehaviorSubject, Observable, Subscription } from "rxjs";
 import { invariant, invariantEq } from "@autoplay/utils";
 import type { IUtilLogger } from "librarylog";
 
-import { deepEqual } from "./deepEqual";
-import { deepDiff } from "./deepDiff";
-import { objMap } from "./objMap";
+import { deepEqual } from "../components/utils/deepEqual";
+import { deepDiff } from "../components/utils/deepDiff";
+import { objMap } from "../components/utils/objMap";
 
 type ToDOM<Attrs> = {
   toDOM: (

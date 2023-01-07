@@ -1,7 +1,8 @@
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState } from "prosemirror-state";
 import { Schema, DOMParser, DOMSerializer } from "prosemirror-model";
-import { EditorView } from "prosemirror-view";
+import { dropCursor } from "prosemirror-dropcursor";
+import { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 
@@ -14,6 +15,8 @@ import { textHTML } from "./textHTML";
 import { defineMimeType } from "./MimeType";
 import { dev, z } from "@autoplay/utils";
 import xss from "xss";
+import createLibraryLoggerProvider from "librarylog";
+import { Subscription } from "rxjs";
 
 const blockSpec = buildTypedNodeSpec("block", {
   atom: true,
@@ -38,7 +41,7 @@ const blockSpec = buildTypedNodeSpec("block", {
     },
   },
 })
-  .toDOM((node) => ["mintty-block", { "mintter-id": node.attrs.miid }, 0])
+  .toDOM((node) => ["mintty-block", { "mintter-id": node.attrs.miid }])
   // // Used for identifying pasting (this is not so important as we should manually manage pasting in Mintter
   // // using unified -> https://github.com/unifiedjs/unified)
   // .addParser({
@@ -158,15 +161,94 @@ export const PageWithTitle = defineContainerUI({
   },
 });
 
+/** Take reference from {@link ProseMirrorBlockContainerHTML} */
+const blockNodeView: (
+  slots: typeof PageWithTitle["_slotWebTypes"]
+) => NodeViewConstructor = (slots) => (node, view, getPos, decs, innerDecs) => {
+  const attrs = blockSpec.attrs(node);
+  const dom = trashHTML(`<div class="page-block" data-miid="${xss(
+    /* hmm not an attr escape... 0/10? */
+    attrs.miid
+  )}">
+  </div>`);
+
+  const liblog = createLibraryLoggerProvider().getLogger();
+  const mountedSub = new Subscription();
+  const state = blockSpec.createState(
+    node,
+    liblog.downgrade.dev(),
+    mountedSub,
+    view,
+    getPos
+  );
+
+  mountedSub.add(
+    state.attrs$.indent.subscribe((value) => {
+      dom.style.marginLeft = `${value}rem`;
+    })
+  );
+
+  const found = slots.children.find((c) => c.miid === attrs.miid);
+  if (!found) {
+    console.error("missing slot info?", found);
+    dom.textContent = dev`missing slot info? ${attrs}`.toDisplay();
+    dom.style.whiteSpace = "pre";
+    return { dom };
+  }
+
+  if (!found.mount) debugger;
+
+  const mounted = found.mount({
+    container: dom,
+  });
+
+  dom.addEventListener("keydown", (event) => {
+    if (event.key === "Tab") {
+      console.warn(`TODO: Change indent of `, blockSpec.attrs(node));
+      state.dispatchUpdateAttrs((attrs) => ({
+        attrs: {
+          indent: Math.min(
+            6,
+            Math.max(0, event.shiftKey ? attrs.indent - 1 : attrs.indent + 1)
+          ),
+        },
+      }));
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  });
+
+  return {
+    dom,
+    update(node, decorations, innerDecorations) {
+      return state.updateNode(node);
+    },
+    stopEvent(event) {
+      return event.target !== dom;
+    },
+    destroy() {
+      mounted.destroy();
+    },
+  };
+};
+
+/** this is stupid... just simple for vanilla js for now */
+function trashHTML(input: string): HTMLElement {
+  const host = document.createElement("div");
+  host.innerHTML = input;
+  return host.childNodes[0] as any;
+}
+
 export const ProseMirrorBlockContainerHTML = PageWithTitle.forHTML(
   ({ slots, values }) => {
     return {
       css: `
-.page-block { position: relative }
+.page-content { padding: 8px 0; }
+.page-block { position: relative; white-space: normal; padding-left: 1rem; transition: all 0.2s;  }
 .page-title { font-size: 36px; font-weight: bold; letter-spacing: -0.01pt; margin-bottom: 1rem; }
 .comment-group { padding: 0.2rem; border: 1px solid #ddd }
 .page-comment--meta { font-size: .85em; }
-.reply-comment-list::before { content: "↪︎"; position: absolute; left: 0 }
+.reply-comment-list::before { content: "↪︎"; position: absolute; left: 1rem }
 .reply-comment-list { padding-left: 1rem; }
 `,
       // Absolute: .page-block-comment { position: absolute; top: 0px; right: 0px; z-index: 1; background: white }
@@ -255,11 +337,7 @@ function wrapCommentsHTML(props: {
 }
 
 export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
-  ({ slots, values, mountTo }) => {
-    const titleElt = document.createElement("div");
-    titleElt.innerHTML = values.title["text/html"];
-    titleElt.contentEditable = "true";
-
+  ({ slots, values }) => {
     // const domParser = DOMParser.fromSchema(schema);
     // const domSerializer = DOMSerializer.fromSchema(schema);
     let state = EditorState.create({
@@ -277,6 +355,10 @@ export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
       schema,
       plugins: [
         history(),
+        dropCursor({
+          width: 3,
+          color: "cornflowerblue",
+        }),
         keymap({ "Mod-z": undo, "Mod-y": redo }),
         keymap(baseKeymap),
         keymap({
@@ -319,17 +401,12 @@ export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
       ],
     });
 
-    const view = new EditorView(mountTo.container, {
-      state,
-    });
-
-    console.log("mounted container editor", mountTo.container, view);
-    view.dom.classList.add("mintty-container-editor");
+    let view: EditorView;
 
     return {
-      applyItemStandoff(values) {
-        console.warn(dev`TODO: update page standoff values for ${values}`);
-      },
+      // applyItemStandoff(values) {
+      //   console.warn(dev`TODO: update page standoff values for ${values}`);
+      // },
       // override current value from save
       apply(values) {
         console.warn("TODO: update page values from other source", { values });
@@ -338,13 +415,34 @@ export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
         frag.innerHTML = values.title["text/html"];
         // const parsed = domParser.parse(frag);
         // const { nodeSize } = view.state.tr.doc;
+
+        // TODO update directly to mountView
+
         // direct full state replacement
         // view.updateState(
         //   view.state.apply(view.state.tr.replaceWith(0, nodeSize, parsed))
         // );
       },
-      destroy() {
-        view.destroy();
+      mount({ container }) {
+        // console.log("mounting block container", mountTo);
+        const titleElt = document.createElement("div");
+        titleElt.innerHTML = values.title["text/html"];
+        titleElt.contentEditable = "true";
+        const mountView = (view = new EditorView(container, {
+          state,
+          nodeViews: {
+            block: blockNodeView(slots),
+          },
+        }));
+
+        console.log("mounted container editor", container, mountView);
+        mountView.dom.classList.add("page-content");
+
+        return {
+          destroy() {
+            mountView.destroy();
+          },
+        };
       },
     };
   }

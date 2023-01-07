@@ -1,19 +1,49 @@
 import { component$, useClientEffect$, useStyles$ } from "@builder.io/qwik";
-import { ProseMirrorLineHTML, ProseMirrorLineWeb } from "../ProseMirrorLine";
+import {
+  ProseMirrorLineHTML,
+  ProseMirrorLineWeb,
+} from "../routes/ProseMirrorLine";
 import {
   PageWithTitle,
   ProseMirrorBlockContainerHTML,
   ProseMirrorBlockContainerWeb,
-} from "../ProseMirrorBlockContainer";
-import { unixSecsFrom } from "./unixSecsFrom";
-import { HTMLLine } from "../HTMLLine";
+} from "../routes/ProseMirrorBlockContainer";
+import { unixSecsFrom } from "./utils/unixSecsFrom";
+import { HTMLLine } from "../routes/HTMLLine";
 import { dev } from "@autoplay/utils";
 import {
+  PickUIFn,
   renderContainerForHTML,
-  renderContainerForWeb,
-} from "../defineContainerUI";
+  createUIStateForWeb,
+} from "../routes/defineContainerUI";
 
-export default component$(() => {
+export const pickUIFn: PickUIFn = ({ itemTestData }) => {
+  if (typeof itemTestData.values["text"]?.["text/html"] === "string") {
+    console.debug("picked ProseMirrorLine ui", itemTestData);
+    return {
+      html: ProseMirrorLineHTML.html,
+      web: ProseMirrorLineWeb.web,
+    };
+  }
+  if (
+    typeof itemTestData.values["title"]?.["text/html"] === "string" &&
+    itemTestData.slots["children"] &&
+    itemTestData.slots["comments"]
+  ) {
+    console.debug("picked ProseMirrorContainer ui", itemTestData);
+    return {
+      html: ProseMirrorBlockContainerHTML.html,
+      web: ProseMirrorBlockContainerWeb.web,
+    };
+  }
+  console.warn("unknown slot item UI", itemTestData);
+  return {
+    html: ProseMirrorLineHTML.html,
+    web: ProseMirrorLineWeb.web,
+  };
+};
+
+export const MinttyPage = component$(() => {
   const pageHTMLID = "c-" + Math.random().toString(36).slice(2);
   const pageTestData = PageWithTitle.testData({
     values: {
@@ -112,54 +142,33 @@ export default component$(() => {
 
   const htmlForBlockContainer = renderContainerForHTML({
     data: pageTestData,
-    pickUI({ itemTestData }) {
-      if (typeof itemTestData.values["text"]?.["text/html"] === "string") {
-        console.debug("picked ProseMirrorLineHTML ui", itemTestData);
-        return {
-          html: ProseMirrorLineHTML.html,
-          web: ProseMirrorLineWeb.web,
-        };
-      }
-      console.warn("unknown slot item UI", itemTestData);
-      return {
-        html: ProseMirrorLineHTML.html,
-        web: ProseMirrorLineWeb.web,
-      };
-    },
+    pickUI: pickUIFn,
   });
 
   // console.log(dev`${htmlForBlockContainer}`._display);
   const pageHTML = ProseMirrorBlockContainerHTML.html(htmlForBlockContainer);
 
   useClientEffect$(() => {
-    const elt = document.getElementById(pageHTMLID);
-    const webInput = renderContainerForWeb({
+    const web = createUIStateForWeb({
       data: pageTestData,
-      pickUI({ itemTestData }) {
-        if (typeof itemTestData.values["text"]?.["text/html"] === "string") {
-          console.debug("picked ProseMirrorLineHTML ui", itemTestData);
-          return {
-            html: ProseMirrorLineHTML.html,
-            web: ProseMirrorLineWeb.web,
-          };
-        }
-        console.warn("unknown slot item UI", itemTestData);
-        return {
-          html: ProseMirrorLineHTML.html,
-          web: ProseMirrorLineWeb.web,
-        };
-      },
-      mountTo: {
-        container: document.getElementById(pageHTMLID) as HTMLElement,
-        async save(values) {
-          console.warn(
-            dev`TODO: save prosemirror container values: ${values}`._display
-          );
-        },
-      },
+      pickUI: pickUIFn,
+      TODO_Save: null,
+      // mountTo: {
+      //   container: document.getElementById(pageHTMLID) as HTMLElement,
+      //   async save(values) {
+      //     console.warn(
+      //       dev`TODO: save prosemirror container values: ${values}`._display
+      //     );
+      //   },
+      // },
     });
 
-    ProseMirrorBlockContainerWeb.web(webInput);
+    console.log("page web", web);
+
+    const mounted = web.mount({
+      container: document.getElementById(pageHTMLID) as HTMLElement,
+    });
+    console.log("page mounted", mounted);
   });
 
   useStyles$(`
