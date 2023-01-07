@@ -1,4 +1,5 @@
-import { MimeType, InferParserValue } from "./MimeType";
+import { MimeType } from "./MimeType";
+import { InferParserValue } from "./Parser";
 
 export interface MinttyValuesConfig {
   values: {

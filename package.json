@@ -42,6 +42,10 @@
     "vite-tsconfig-paths": "3.5.0"
   },
   "dependencies": {
+    "@autoplay/utils": "^0.0.25",
+    "librarylog": "^0.0.4",
+    "moment": "^2.29.4",
+    "rxjs": "^7.8.0",
     "xss": "^1.0.14"
   }
 }

@@ -1,14 +1,8 @@
-import { component$, useStyles$ } from "@builder.io/qwik";
-import type { DocumentHead } from "@builder.io/qwik-city";
-import { Link } from "@builder.io/qwik-city";
+import { component$ } from "@builder.io/qwik";
+import { DocumentHead, Link } from "@builder.io/qwik-city";
 
 import { useClientEffect$ } from "@builder.io/qwik";
-import {
-  MinttyValuesConfig,
-  MinttyHTMLUI,
-  InferValues,
-  MinttyWebUI,
-} from "./defineUI";
+import type { MinttyValuesConfig, MinttyHTMLUI, InferValues } from "./defineUI";
 import { ProseMirrorLineHTML, ProseMirrorLineWeb } from "./ProseMirrorLine";
 
 // function useEditor
@@ -31,6 +25,10 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
         A ProseMirror setup + some interfaces for extensible data storage in{" "}
         <code>src/routes/index.tsx</code>
       </p>
+      <Link class="mindblow" href="/page/">
+        See Page Demo
+      </Link>
+      <hr />
 
       {/* A series of editors next to each other */}
       <MinttyBlock
@@ -60,6 +58,7 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
           },
         }}
       />
+
       {/* <Link class="mindblow" href="/flower/">
         Blow my mind 🤯
       </Link> */}
