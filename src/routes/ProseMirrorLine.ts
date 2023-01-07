@@ -29,7 +29,6 @@ const schema = new Schema({
   marks: basicSchema.spec.marks,
 });
 
-
 export const ProseMirrorLineHTML = HTMLLine.forHTML((values) => {
   const css = [
     prosemirrorStyles,
@@ -45,7 +44,7 @@ export const ProseMirrorLineHTML = HTMLLine.forHTML((values) => {
 
   let html = values.text["text/html"];
   if (!html) html = "<br/>";
-  else html = xss(html)
+  else html = xss(html);
   // // Add wrapping paragraph
   // const noParagraphs = !/\s*<p\b/.test(html);
   // if (noParagraphs) html = `<p>${html}</p>`;
@@ -88,13 +87,15 @@ export const ProseMirrorLineWeb = HTMLLine.forWeb((values, mountTo) => {
                   const frag = domSerializer.serializeFragment(
                     view.state.doc.content
                   );
-                  const html = Array.from(frag.children)
-                    .map((elt) => elt.outerHTML)
-                    .join("\n");
+                  const elt = document.createElement("div");
+                  elt.append(frag);
+                  // const html = Array.from(.children)
+                  //   .map((elt) => elt.outerHTML)
+                  //   .join("\n");
                   // console.log(frag, html);
                   mountTo.save({
                     text: {
-                      "text/html": html,
+                      "text/html": elt.innerHTML,
                     },
                   });
                 }

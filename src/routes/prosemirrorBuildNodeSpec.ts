@@ -1,4 +1,4 @@
-import {
+import type {
   AttributeSpec,
   DOMOutputSpec,
   Fragment,
@@ -8,14 +8,15 @@ import {
   NodeType,
   ParseRule,
 } from "prosemirror-model";
-import { EditorView } from "prosemirror-view";
+import type { EditorView } from "prosemirror-view";
 import { BehaviorSubject, Observable, Subscription } from "rxjs";
 
 import { invariant, invariantEq } from "@autoplay/utils";
-import { IUtilLogger } from "librarylog";
+import type { IUtilLogger } from "librarylog";
 
 import { deepEqual } from "./deepEqual";
 import { deepDiff } from "./deepDiff";
+import { objMap } from "./objMap";
 
 type ToDOM<Attrs> = {
   toDOM: (
@@ -244,17 +245,4 @@ export function buildTypedNodeSpec<T extends Record<string, AttributeSpec>>(
       };
     },
   };
-}
-
-function objMap<T extends Record<string, any>, U>(
-  template: T,
-  eachKey: <P extends keyof T>(value: T[P], name: P) => U
-): { [P in keyof T]: U } {
-  // @ts-ignore
-  return Object.fromEntries(
-    Object.entries(template).map(([name, value]) => {
-      // @ts-ignore
-      return [name, eachKey(value, name)];
-    })
-  );
 }

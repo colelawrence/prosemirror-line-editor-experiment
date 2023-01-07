@@ -1,5 +1,5 @@
-import { MimeType } from "./MimeType";
-import { InferParserValue } from "./Parser";
+import type { MimeType } from "./MimeType";
+import type { InferParserValue } from "./Parser";
 
 export interface MinttyValuesConfig {
   values: {
@@ -9,29 +9,7 @@ export interface MinttyValuesConfig {
     };
   };
 }
-/**
- * Slots
- *
- * Progress 0/10:
- *  * I want to be able to statically say "I can render these children if they..."
- *  * Those children could be whiteboard elements or they could be line items, or
- *    to-do list tasks.
- *  * Example: If the children were to-do list tasks, then the parent
- *    could have its own UI for filtering whether to show the items which are done
- *    or not.
- * 
- * See Slot Props in Vue.js https://youtu.be/emi436qg9mg?t=431
- */
-export interface MinttySlotsConfig {
-  slots: {
-    [slotName: string]: {
-      item: MinttyValuesConfig;
-      // Assume a slot can always hold multiple
-      // /** can hold multiple */
-      // multiple: boolean,
-    };
-  }
-}
+
 export type InferValues<Config extends MinttyValuesConfig> = {
   [P in keyof Config["values"]]: Record<
     Config["values"][P]["format"]["id"],
@@ -80,6 +58,16 @@ export function defineUI<Values extends MinttyValuesConfig>(values: Values) {
         values,
         web,
       };
+    },
+    testData(
+      options: {
+        slots: {};
+        values: InferValues<Values>;
+      }
+      // /** other blocks could be mixed with this */
+      // mergeIn: { values: InferValues<any> }[]
+    ) {
+      return options;
     },
   };
 }

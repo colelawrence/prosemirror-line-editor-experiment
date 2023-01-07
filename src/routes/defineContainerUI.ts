@@ -1,5 +1,7 @@
 import type { TeardownLogic } from "rxjs";
-import type { InferValues, MinttyValuesConfig } from "./defineUI";
+import type { InferValues, MinttyHTMLFn, MinttyValuesConfig } from "./defineUI";
+import type { TestBlockData } from "./TestBlockData";
+import { objMap } from "./objMap";
 
 enum Outcome {
   Passthrough = 0,
@@ -33,7 +35,10 @@ export interface MinttySlotsConfig {
 
 type MintterItemID = string;
 
-type InferSlotItemValues<Slots extends MinttySlotsConfig, ExtendWith = {}> = {
+export type InferSlotItemValues<
+  Slots extends MinttySlotsConfig,
+  ExtendWith = {}
+> = {
   [P in keyof Slots["slots"]]: Array<
     ExtendWith & {
       miid: MintterItemID;
@@ -44,12 +49,10 @@ type InferSlotItemValues<Slots extends MinttySlotsConfig, ExtendWith = {}> = {
 };
 
 export interface MinttyHTMLContainerUI<
-  Values extends MinttyValuesConfig,
-  Slots extends MinttySlotsConfig
+  Config extends MinttyValuesConfig & MinttySlotsConfig
 > {
-  slots: Slots;
-  values: Values;
-  html: MinttyHTMLContainerFn<Values, Slots>;
+  config: Config;
+  html: MinttyHTMLContainerFn<Config>;
 }
 
 type InferSlotsForHTML<Slots extends MinttySlotsConfig> = InferSlotItemValues<
@@ -61,16 +64,18 @@ type InferSlotsForHTML<Slots extends MinttySlotsConfig> = InferSlotItemValues<
   }
 >;
 
-export interface MinttyHTMLContainerFn<
-  Values extends MinttyValuesConfig,
-  Slots extends MinttySlotsConfig
+export interface MinttyHTMLContainerFnInput<
+  Config extends MinttyValuesConfig & MinttySlotsConfig
 > {
-  (options: {
-    /** initial values on the container */
-    values: InferValues<Values>;
-    /** initial values and html and css per item HTML */
-    slots: InferSlotsForHTML<Slots>;
-  }): {
+  /** initial values on the container */
+  values: InferValues<Config>;
+  /** initial values and html and css per item HTML */
+  slots: InferSlotsForHTML<Config>;
+}
+export interface MinttyHTMLContainerFn<
+  Config extends MinttyValuesConfig & MinttySlotsConfig
+> {
+  (options: MinttyHTMLContainerFnInput<Config>): {
     css?: string;
     html: string;
   };
@@ -118,13 +123,12 @@ type InferSlotsForWeb<Slots extends MinttySlotsConfig> = InferSlotItemValues<
 >;
 
 export interface MinttyWebContainerFn<
-  Values extends MinttyValuesConfig,
-  Slots extends MinttySlotsConfig
+  Config extends MinttyValuesConfig & MinttySlotsConfig
 > {
   (options: {
     /** initial values on the container */
-    values: InferValues<Values>;
-    slots: InferSlotsForWeb<Slots>;
+    values: InferValues<Config>;
+    slots: InferSlotsForWeb<Config>;
     // // duplicates slots?
     // mountTo: {
     //   container: HTMLElement;
@@ -132,49 +136,68 @@ export interface MinttyWebContainerFn<
     // }
   }): {
     destroy(): void;
-    apply(values: Partial<InferValues<Values>>): void;
+    apply(values: Partial<InferValues<Config>>): void;
     applyItemStandoff(
-      values: Partial<InferSlotItemValues<Slots, { updateItemAtIndex: number }>>
+      values: Partial<
+        InferSlotItemValues<Config, { updateItemAtIndex: number }>
+      >
     ): void;
   };
 }
-
 export interface MinttyWebContainerUI<
-  Values extends MinttyValuesConfig,
-  Slots extends MinttySlotsConfig
+  Config extends MinttyValuesConfig & MinttySlotsConfig
 > {
-  values: Values;
-  slots: Slots;
-  web: MinttyWebContainerFn<Values, Slots>;
+  config: Config;
+  web: MinttyWebContainerFn<Config>;
 }
 
 /** use for keys that should not be accesed from runtime */
 const justForTypeScript = Symbol.for("just for typescript") as any;
 
 export function defineContainerUI<
-  Values extends MinttyValuesConfig,
-  Slots extends MinttySlotsConfig
->(config: { self: Values; content: Slots }) {
+  Config extends MinttyValuesConfig & MinttySlotsConfig
+>(config: Config) {
   return {
     forHTML(
-      html: MinttyHTMLContainerFn<Values, Slots>
-    ): MinttyHTMLContainerUI<Values, Slots> {
+      html: MinttyHTMLContainerFn<Config>
+    ): MinttyHTMLContainerUI<Config> {
       return {
-        values: config.self,
-        slots: config.content,
+        config,
         html,
       };
     },
-    forWeb(
-      web: MinttyWebContainerFn<Values, Slots>
-    ): MinttyWebContainerUI<Values, Slots> {
+    forWeb(web: MinttyWebContainerFn<Config>): MinttyWebContainerUI<Config> {
       return {
-        values: config.self,
-        slots: config.content,
+        config,
         web,
       };
     },
-    _slotHTMLTypes: justForTypeScript as InferSlotsForHTML<Slots>,
-    _slotWebTypes: justForTypeScript as InferSlotsForWeb<Slots>,
+    testData(data: TestBlockData<Config>) {
+      return {
+        forHTML(options: {
+          // In the future, we will need to return an id
+          pickHTMLUI: (options: {
+            itemTestData: TestBlockData<any>;
+          }) => MinttyHTMLFn<any>;
+        }): MinttyHTMLContainerFnInput<Config> {
+          return {
+            slots:
+              data.slots &&
+              objMap(data.slots, (slotItemList) =>
+                slotItemList.map((slotItem) => ({
+                  miid: slotItem.miid,
+                  standoffValues: slotItem.standoffValues,
+                  ...options.pickHTMLUI({
+                    itemTestData: slotItem.linkedBlockData,
+                  })(slotItem.linkedBlockData.values),
+                }))
+              ),
+            values: data.values, // objMap(data.values, (value) => objMap(value, format => )),
+          };
+        },
+      };
+    },
+    _slotHTMLTypes: justForTypeScript as InferSlotsForHTML<Config>,
+    _slotWebTypes: justForTypeScript as InferSlotsForWeb<Config>,
   };
 }

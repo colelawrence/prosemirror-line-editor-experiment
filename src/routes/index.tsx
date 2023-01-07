@@ -20,14 +20,10 @@ export const editors = [ProseMirrorLineHTML, ProseMirrorLineWeb];
 export default component$<{ initialValues: any }>(({ initialValues }) => {
   return (
     <div>
-      <h1>Mintter Experiment #1</h1>
       <p>
         A ProseMirror setup + some interfaces for extensible data storage in{" "}
         <code>src/routes/index.tsx</code>
       </p>
-      <Link class="mindblow" href="/page/">
-        See Page Demo
-      </Link>
       <hr />
 
       {/* A series of editors next to each other */}

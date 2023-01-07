@@ -1,10 +1,15 @@
 import { component$, useStyles$ } from "@builder.io/qwik";
 import { ProseMirrorLineHTML } from "../ProseMirrorLine";
-import { ProseMirrorBlockContainerHTML } from "../ProseMirrorBlockContainer";
+import {
+  PageWithTitle,
+  ProseMirrorBlockContainerHTML,
+} from "../ProseMirrorBlockContainer";
 import { unixSecsFrom } from "./unixSecsFrom";
+import { HTMLLine } from "../HTMLLine";
+import { dev } from "@autoplay/utils";
 
 export default component$<{ initialValues: any }>(({ initialValues }) => {
-  const pageHTML = ProseMirrorBlockContainerHTML.html({
+  const pageTestData = PageWithTitle.testData({
     values: {
       title: {
         "text/html": `Mintty Editor <sup>experiment</sup>`,
@@ -14,8 +19,11 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
       children: [
         {
           miid: "MIID-LINE-001",
-          ...ProseMirrorLineHTML.html({
-            text: { "text/html": "Hello <strong>Mintter</strong>!" },
+          linkedBlockData: HTMLLine.testData({
+            slots: {},
+            values: {
+              text: { "text/html": "Hello <strong>Mintter</strong>!" },
+            },
           }),
           standoffValues: {
             fractionalIndex: { "number/decimal": 0.01 },
@@ -24,18 +32,24 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
         },
         {
           miid: "MIID-LINE-002",
-          ...ProseMirrorLineHTML.html({
-            text: { "text/html": "This is block 2." },
+          linkedBlockData: HTMLLine.testData({
+            slots: {},
+            values: {
+              text: { "text/html": "This is block 2." },
+            },
           }),
           standoffValues: {
             fractionalIndex: { "number/decimal": 0.5 },
-            indentation: { "number/natural": 0 },
+            indentation: { "number/natural": 1 },
           },
         },
         {
           miid: "MIID-LINE-003",
-          ...ProseMirrorLineHTML.html({
-            text: { "text/html": "This is block 3." },
+          linkedBlockData: HTMLLine.testData({
+            slots: {},
+            values: {
+              text: { "text/html": "This is block 3." },
+            },
           }),
           standoffValues: {
             fractionalIndex: { "number/decimal": 5 },
@@ -46,8 +60,11 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
       comments: [
         {
           miid: "MIID-COMMENT-001",
-          ...ProseMirrorLineHTML.html({
-            text: { "text/html": "A comment" },
+          linkedBlockData: HTMLLine.testData({
+            slots: {},
+            values: {
+              text: { "text/html": "A comment" },
+            },
           }),
           standoffValues: {
             targetId: { "mintter/item-id": "MIID-LINE-001" },
@@ -57,8 +74,11 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
         },
         {
           miid: "MIID-COMMENT-002",
-          ...ProseMirrorLineHTML.html({
-            text: { "text/html": "Was this comment for testing?" },
+          linkedBlockData: HTMLLine.testData({
+            slots: {},
+            values: {
+              text: { "text/html": "Was this comment for testing?" },
+            },
           }),
           standoffValues: {
             targetId: { "mintter/item-id": "MIID-COMMENT-001" },
@@ -68,8 +88,11 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
         },
         {
           miid: "MIID-COMMENT-003",
-          ...ProseMirrorLineHTML.html({
-            text: { "text/html": "Supports indentation?" },
+          linkedBlockData: HTMLLine.testData({
+            slots: {},
+            values: {
+              text: { "text/html": "Supports indentation?" },
+            },
           }),
           standoffValues: {
             targetId: { "mintter/item-id": "MIID-LINE-003" },
@@ -81,19 +104,32 @@ export default component$<{ initialValues: any }>(({ initialValues }) => {
     },
   });
 
+  const htmlForBlockContainer = pageTestData.forHTML({
+    pickHTMLUI({ itemTestData }) {
+      if (typeof itemTestData.values["text"]?.["text/html"] === "string") {
+        console.debug("picked ProseMirrorLineHTML ui", itemTestData);
+        return ProseMirrorLineHTML.html;
+      }
+
+      console.warn("unknown slot item UI", itemTestData);
+      return ProseMirrorLineHTML.html;
+    },
+  });
+  // console.log(dev`${htmlForBlockContainer}`._display);
+  const pageHTML = ProseMirrorBlockContainerHTML.html(htmlForBlockContainer);
+
   useStyles$(`
 .page-container {
   padding: 1rem;
   border-radius: 4px;
-  background-color: white;
-  box-shadow: 0px 20px 30px rgba(0,0,0,0.4);
+  box-shadow: 0px 20px 40px rgba(20,30,140,0.2);
 }
   `);
 
   return (
     <div>
-      <h1>Mintter Experiment #1</h1>
-      <p>Page container</p>
+      <p>Page container renders embedded editors with HTML</p>
+      <hr />
       <style>{pageHTML.css}</style>
       <div class="page-container" dangerouslySetInnerHTML={pageHTML.html}></div>
     </div>
