@@ -1,5 +1,4 @@
-import { InferValues } from "./defineUI";
-
+import type { InferValues } from "./MinttyValuesConfig.type";
 
 export function mergeValues(...valuesToMerge: InferValues<any>[]) {
   const mergeInto: InferValues<any> = {};

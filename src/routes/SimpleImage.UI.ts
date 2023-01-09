@@ -1,34 +1,5 @@
-import { z } from "@autoplay/utils";
 import xss from "xss";
-import { defineContainerUI } from "./defineContainerUI";
-import { defineMimeType } from "./MimeType";
-import { textHTML } from "./textHTML";
-
-export const SimpleImage = defineContainerUI({
-  values: {
-    imageSrc: {
-      format: defineMimeType("data-uri", z.string()),
-    },
-    // used for caption
-    title: {
-      format: textHTML,
-    },
-    // // used for alt text
-    // text: {
-    //   format: textHTML,
-    // },
-  },
-  slots: {
-    // For annotation, you could overlay a whiteboard UI for example.
-    // overlays: {
-    //   multiple: true,
-    //   itemStandoffValues: {
-    //     values: {
-    //     }
-    //   }
-    // }
-  },
-});
+import { SimpleImage } from "./SimpleImage.ItemSchema";
 
 export const SimpleImageHTML = SimpleImage.forHTML(({ values }) => {
   const css = [
@@ -47,7 +18,7 @@ export const SimpleImageHTML = SimpleImage.forHTML(({ values }) => {
 }
 .mintty-image--caption {
   font-size: 0.85rem;
-  color: #dbdbdb;
+  color: #666;
   line-height: 1.4;
 }`,
   ].join("");
@@ -79,11 +50,14 @@ export const SimpleImageWeb = SimpleImage.forWeb((mountTo) => {
   const frag = document.createElement("div");
   frag.classList.add("mintty-image");
   frag.append(img, caption);
-  frag.tabIndex = 1 // make it "targetable"
+  frag.tabIndex = 1; // make it "targetable"
 
   return {
     // override current value from save
     apply(values) {
+      if (values.imageSrc) {
+        img.src = values.imageSrc["data-uri"];
+      }
       // updateFn(values);
     },
     mount({ container }) {

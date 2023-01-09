@@ -3,7 +3,7 @@ import { useClientEffect$ } from "@builder.io/qwik";
 import type {
   MinttyHTMLContainerUI,
   MinttyWebContainerUI,
-} from "~/routes/defineContainerUI";
+} from "~/routes/defineItemSchema";
 import { editors } from "../routes/index";
 
 export const MinttyBlock = component$<{

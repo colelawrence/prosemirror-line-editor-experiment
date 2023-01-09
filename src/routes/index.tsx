@@ -1,18 +1,9 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 
-import type { MinttyValuesConfig, MinttyHTMLUI, InferValues } from "./defineUI";
-import { ProseMirrorLineHTML, ProseMirrorLineWeb } from "./ProseMirrorLine";
+import { ProseMirrorLineHTML, ProseMirrorLineWeb } from "./ProseMirrorLine.UI";
 import { MinttyPage } from "../components/MinttyPage";
 import { MinttyBlock } from "../components/MinttyBlock";
-
-// function useEditor
-
-type EditorProps<Values extends MinttyValuesConfig> = {
-  block: MinttyHTMLUI<Values>;
-  save(values: Partial<InferValues<Values>>): Promise<void>;
-  initialValues: InferValues<Values>;
-};
 
 // hmm... I have to use lookups in order to create enough indirection for both
 // server side components and client mounted to be serializable

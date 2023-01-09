@@ -1,4 +1,4 @@
-import type { Parser } from "./Parser";
+import type { Parser } from "./Parser.type";
 
 export interface MimeType<ID extends string, JSON> {
   id: ID;

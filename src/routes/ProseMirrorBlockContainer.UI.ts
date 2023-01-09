@@ -1,22 +1,22 @@
 import { baseKeymap, toggleMark } from "prosemirror-commands";
-import { EditorState } from "prosemirror-state";
-import { Schema, DOMParser, DOMSerializer } from "prosemirror-model";
 import { dropCursor } from "prosemirror-dropcursor";
-import { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { undo, redo, history } from "prosemirror-history";
+import { history, redo, undo } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
+import { Schema } from "prosemirror-model";
+import { EditorState } from "prosemirror-state";
+import { EditorView, NodeViewConstructor } from "prosemirror-view";
 
 import moment from "moment";
 
-import { schema as basicSchema } from "prosemirror-schema-basic";
-import { buildTypedNodeSpec } from "./prosemirrorBuildNodeSpec";
-import { defineContainerUI } from "./defineContainerUI";
-import { textHTML } from "./textHTML";
-import { defineMimeType } from "./MimeType";
 import { dev, z } from "@autoplay/utils";
-import xss from "xss";
 import createLibraryLoggerProvider from "librarylog";
+import { schema as basicSchema } from "prosemirror-schema-basic";
 import { Subscription } from "rxjs";
+import xss from "xss";
+import { defineItemSchema } from "./defineItemSchema";
+import { defineMimeType } from "./MimeType";
+import { buildTypedNodeSpec } from "./prosemirrorBuildNodeSpec";
+import { textHTML } from "./textHTML.mimeType";
 
 const blockSpec = buildTypedNodeSpec("block", {
   atom: true,
@@ -107,7 +107,7 @@ const unixSecsFormat = defineMimeType("time/unix-secs", {
   },
 });
 
-export const PageWithTitle = defineContainerUI({
+export const PageWithTitle = defineItemSchema({
   values: {
     title: {
       format: textHTML,
@@ -150,11 +150,6 @@ export const PageWithTitle = defineContainerUI({
           targetId: {
             format: itemIDFormat,
           },
-          // TODO: editedAt, editedBy, etc...
-          // /** targeting another sibling comment */
-          // replyToItemId: {
-          //   format: itemIDFormat,
-          // },
         },
       },
     },
@@ -241,7 +236,7 @@ function trashHTML(input: string): HTMLElement {
 
 export const ProseMirrorBlockContainerHTML = PageWithTitle.forHTML(
   ({ slots, values }) => {
-    slots.comments.map(child => child.standoffValues.postedAt["time/unix-secs"])
+    slots.comments.map((child) => child.html);
     return {
       css: `
 .page-content { padding: 8px 0; }
@@ -338,7 +333,7 @@ function wrapCommentsHTML(props: {
 }
 
 export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
-  ({ slots, values }) => {
+  ({ slots, values, save }) => {
     // const domParser = DOMParser.fromSchema(schema);
     // const domSerializer = DOMSerializer.fromSchema(schema);
     let state = EditorState.create({
@@ -388,10 +383,10 @@ export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
                     //   .map((elt) => elt.outerHTML)
                     //   .join("\n");
                     // // console.log(frag, html);
-                    // mountTo.save({
-                    //   text: {
-                    //     "text/html": html,
-                    //   },
+                    // save({
+                    //   title: {
+                    //     "text/html": "New title"
+                    //   }
                     // });
                   }
                 },
@@ -426,9 +421,10 @@ export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
       },
       mount({ container }) {
         // console.log("mounting block container", mountTo);
-        const titleElt = document.createElement("div");
+        const titleElt = document.createElement("h1");
         titleElt.innerHTML = values.title["text/html"];
         titleElt.contentEditable = "true";
+        container.append(titleElt);
         const mountView = (view = new EditorView(container, {
           state,
           nodeViews: {
@@ -442,6 +438,7 @@ export const ProseMirrorBlockContainerWeb = PageWithTitle.forWeb(
         return {
           destroy() {
             mountView.destroy();
+            titleElt.remove();
           },
         };
       },

@@ -1,6 +1,6 @@
-import type { BlockData } from "./BlockData";
-import type { MinttySlotsConfig } from "./defineContainerUI";
-import type { MinttyValuesConfig } from "./defineUI";
+import type { BlockData } from "./BlockData.type";
+import type { MinttySlotsConfig } from "./defineItemSchema";
+import type { MinttyValuesConfig } from "./MinttyValuesConfig.type";
 
 /** Test blocks include all nested blocks' data */
 export type TestBlockData<

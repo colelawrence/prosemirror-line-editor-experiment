@@ -7,7 +7,7 @@ import { keymap } from "prosemirror-keymap";
 import prosemirrorStyles from "prosemirror-view/style/prosemirror.css?inline";
 
 import { schema as basicSchema } from "prosemirror-schema-basic";
-import { HTMLLine } from "./HTMLLine";
+import { HTMLLine } from "./HTMLLine.ItemSchema";
 import xss from "xss";
 
 /**
@@ -109,6 +109,8 @@ export const ProseMirrorLineWeb = HTMLLine.forWeb((mountTo) => {
     ],
   });
 
+  let view: EditorView
+
   let updateFn = (values: Partial<typeof HTMLLine._valueType>) => {
     if (values.text === undefined) return;
     const frag = document.createElement("div");
@@ -127,13 +129,14 @@ export const ProseMirrorLineWeb = HTMLLine.forWeb((mountTo) => {
       updateFn(values);
     },
     mount({ container }) {
-      const view = new EditorView(container, {
+      view?.destroy()
+      view = new EditorView(container, {
         state,
       });
 
       console.log("mounted line editor", container, view);
       view.dom.classList.add("mintty-line-editor");
-      updateFn = (values: typeof HTMLLine._valueType) => {
+      updateFn = (values) => {
         if (values.text === undefined) return;
         const frag = document.createElement("div");
         frag.innerHTML = values.text["text/html"];

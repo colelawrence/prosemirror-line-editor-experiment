@@ -1,13 +1,7 @@
-import type {
-  InferValues,
-  MinttyHTMLFn,
-  MinttyValuesConfig,
-  MinttyMountFn,
-  MinttyWebFn,
-} from "./defineUI";
-import type { TestBlockData } from "./TestBlockData";
+import type { InferValues, MinttyValuesConfig } from "./MinttyValuesConfig.type";
+import type { MinttyMountFn } from "./MinttyMountFn.interface";
+import type { TestBlockData } from "./TestBlockData.type";
 import { objMap } from "../components/utils/objMap";
-import type { TeardownLogic } from "rxjs";
 import { createErrorObj, dev } from "@autoplay/utils";
 
 enum Outcome {
@@ -160,9 +154,9 @@ export type PickUIFn = (options: { itemTestData: TestBlockData<any> }) => {
   web: MinttyWebContainerFn<any>;
 };
 
-export function defineContainerUI<
-  Config extends MinttyValuesConfig & MinttySlotsConfig
->(config: Config) {
+export function defineItemSchema<Config extends MinttyValuesConfig & MinttySlotsConfig>(
+  config: Config
+) {
   return {
     forHTML(
       html: MinttyHTMLContainerFn<Config>
